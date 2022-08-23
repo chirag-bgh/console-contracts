@@ -3,9 +3,10 @@ pragma solidity ^0.8.15;
 
 import {ERC721} from "solmate/tokens/ERC721.sol";
 import {PRBMathSD59x18} from "prb-math/PRBMathSD59x18.sol";
+import {Ownable} from "openzeppelin-contracts/contracts/access/Ownable.sol";
 
 ///@notice Implementation of Discrete GDA with exponential price decay for ERC721
-abstract contract DiscreteGDA is ERC721 {
+abstract contract DiscreteGDA is ERC721, Ownable {
     using PRBMathSD59x18 for int256;
 
     ///@notice id of current ERC721 being minted
@@ -45,6 +46,17 @@ abstract contract DiscreteGDA is ERC721 {
         auctionStartTime = int256(block.timestamp).fromInt();
     }
 
+    // // metadata URI
+    string private _baseTokenURI;
+
+    function _baseURI() internal view virtual returns (string memory) {
+        return _baseTokenURI;
+    }
+
+    function setBaseURI(string calldata baseURI) external onlyOwner {
+        _baseTokenURI = baseURI;
+    }
+
     ///@notice purchase a specific number of tokens from the GDA
     function purchaseTokens(uint256 numTokens, address to) public payable {
         uint256 cost = purchasePrice(numTokens);
@@ -67,8 +79,7 @@ abstract contract DiscreteGDA is ERC721 {
     function purchasePrice(uint256 numTokens) public view returns (uint256) {
         int256 quantity = int256(numTokens).fromInt();
         int256 numSold = int256(currentId).fromInt();
-        int256 timeSinceStart = int256(block.timestamp).fromInt() -
-            auctionStartTime;
+        int256 timeSinceStart = int256(block.timestamp).fromInt() - auctionStartTime;
 
         int256 num1 = initialPrice.mul(scaleFactor.pow(numSold));
         int256 num2 = scaleFactor.pow(quantity) - PRBMathSD59x18.fromInt(1);
